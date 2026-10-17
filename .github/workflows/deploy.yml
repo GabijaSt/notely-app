@@ -1,0 +1,42 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: europe-north1
+  REGISTRY: europe-north1-docker.pkg.dev/cloud-computing-continuum-gabi/notely
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/405866150955/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: github-deployer@cloud-computing-continuum-gabi.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker europe-north1-docker.pkg.dev --quiet
+
+      - name: Build and push images
+        run: |
+          docker build -t $REGISTRY/backend:${{ github.sha }} backend
+          docker build -t $REGISTRY/frontend:${{ github.sha }} frontend
+          docker push $REGISTRY/backend:${{ github.sha }}
+          docker push $REGISTRY/frontend:${{ github.sha }}
+
+      - name: Deploy new revisions
+        run: |
+          gcloud run services update notely-backend --region $REGION --image $REGISTRY/backend:${{ github.sha }}
+          gcloud run services update notely-frontend --region $REGION --image $REGISTRY/frontend:${{ github.sha }}
