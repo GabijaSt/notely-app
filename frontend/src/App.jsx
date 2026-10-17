@@ -93,7 +93,7 @@ export default function App() {
 
   return (
     <div style={s.page}>
-      <h1>Notely</h1>
+      <h1>Notely Just Checking</h1>
       {error && <p style={s.err}><strong>Error:</strong> {error}</p>}
 
       {editing ? (
